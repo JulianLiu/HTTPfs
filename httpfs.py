@@ -102,7 +102,7 @@ if __name__ == '__main__':
         'allow_other': True if args.pop("allow_other") else False,
     }
 
-    o_args_list = [x.strip() for x in args.pop("o").split(",")]
+    o_args_list = [x.strip() for x in args.pop("options").split(",")]
     o_args = {}
     for x in o_args_list:
         xs = [y.strip() for y in x.split("=")]
