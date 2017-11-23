@@ -70,7 +70,16 @@ class File:
                 mtime_string = self.r.headers["Last-Modified"]
                 self.mtime = time.mktime(datetime.strptime(mtime_string, "%a, %d %b %Y %H:%M:%S %Z").timetuple())
             except KeyError:
-                self.mtime = time.time()
+                self.mtime = None if self.is_dir else time.time()
+            if self.mtime is None:
+                # parse modified time from html if we can't get from header
+                response = self.session.get(u"{}/{}/".format(self.root, parent_dir))
+                parsed = BeautifulSoup(response.text, 'html.parser')
+                for x in parsed.find_all("tr"):
+                    if x.td is not None and x.td.img['alt'] != "[PARENTDIR]":
+                        row_tds = x.find_all('td')
+                        if filename in row_tds[1].a.string:
+                            self.mtime = time.mktime(datetime.strptime(row_tds[2].string.strip(), "%Y-%m-%d %H:%M").timetuple())
         else:
             self.log.info(u"[INIT] Non-200 code while getting {}: {}".format(self.url, self.r.status_code))
             self.size = 0
