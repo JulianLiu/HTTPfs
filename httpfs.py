@@ -11,13 +11,16 @@ from parser import Directory, File
 
 
 class HTTPfs(Operations):
-    def __init__(self, root, verify_ssl=True):
+    def __init__(self, root, verify_ssl=True, auth=""):
         self.root = root
         self.log = logging.getLogger(__name__)
         self.readdir_cache = {}
         self.attr_cache = {}
         self.file_cache = {}
         self.session = requests.Session()
+        if auth:
+            auth_info = auth.split(':', 2)
+            self.session.auth = (auth_info[0], auth_info[1])
         if not verify_ssl:
             self.log.warn("Disabling SSL verification!")
             self.session.verify = False
@@ -89,6 +92,7 @@ if __name__ == '__main__':
 
     p.add_argument("-o", "--options", type=str, default="", help="Mount-style variant of the above options "
                                                                  "(e.g. -o debug,allow_other")
+    p.add_argument("-u", "--auth", type=str, default="", help="Basic http auth")
 
     args = vars(p.parse_args(sys.argv[1:]))
 
@@ -114,4 +118,4 @@ if __name__ == '__main__':
     if fuse_kwargs['debug']:
         logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
-    FUSE(HTTPfs(fsroot, verify_ssl=False if args.pop("no_ssl_verify") else True), mountpoint, **fuse_kwargs)
+    FUSE(HTTPfs(fsroot, verify_ssl=False if args.pop("no_ssl_verify") else True, auth=args.pop("auth")), mountpoint, **fuse_kwargs)
