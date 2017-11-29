@@ -11,7 +11,7 @@ from parser import Directory, File
 
 
 class HTTPfs(Operations):
-    def __init__(self, root, verify_ssl=True, auth=""):
+    def __init__(self, root, verify_ssl=True, auth="", dirmtime=False):
         self.root = root
         self.log = logging.getLogger(__name__)
         self.readdir_cache = {}
@@ -24,6 +24,7 @@ class HTTPfs(Operations):
         if not verify_ssl:
             self.log.warn("Disabling SSL verification!")
             self.session.verify = False
+        self.dirmtime = dirmtime
 
     def readdir(self, path, fh):
         path = path.strip("/")
@@ -41,7 +42,7 @@ class HTTPfs(Operations):
 
         self.log.debug(u"[READ] Reading path {}, {} bytes from {}".format(path, length, offset))
         if path not in self.file_cache.keys():
-            self.file_cache[path] = File(self.root, path, self, self.session)
+            self.file_cache[path] = File(self.root, path, self, self.session, self.dirmtime)
 
         return self.file_cache[path].read(length, offset)
 
@@ -53,7 +54,7 @@ class HTTPfs(Operations):
         if path not in self.attr_cache.keys():
             try:
                 if path not in self.file_cache.keys():
-                    self.file_cache[path] = File(self.root, path, self, self.session)
+                    self.file_cache[path] = File(self.root, path, self, self.session, self.dirmtime)
                 self.attr_cache[path] = self.file_cache[path].attributes()
             except FuseOSError:
                 self.attr_cache[path] = None
@@ -93,6 +94,8 @@ if __name__ == '__main__':
     p.add_argument("-o", "--options", type=str, default="", help="Mount-style variant of the above options "
                                                                  "(e.g. -o debug,allow_other")
     p.add_argument("-u", "--auth", type=str, default="", help="Basic http auth")
+    p.add_argument("--dirmtime", action="store_true", help="Try to parse directory modified time from html"
+                                                           "(In case not found in headers)")
 
     args = vars(p.parse_args(sys.argv[1:]))
 
@@ -118,4 +121,4 @@ if __name__ == '__main__':
     if fuse_kwargs['debug']:
         logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
-    FUSE(HTTPfs(fsroot, verify_ssl=False if args.pop("no_ssl_verify") else True, auth=args.pop("auth")), mountpoint, **fuse_kwargs)
+    FUSE(HTTPfs(fsroot, verify_ssl=False if args.pop("no_ssl_verify") else True, auth=args.pop("auth"), dirmtime=args.pop("dirmtime")), mountpoint, **fuse_kwargs)

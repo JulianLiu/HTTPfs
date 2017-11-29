@@ -40,13 +40,14 @@ class Directory:
 
 
 class File:
-    def __init__(self, root, path, httpfs, session):
+    def __init__(self, root, path, httpfs, session, dirmtime=False):
         self.root = root
         self.path = path
         self.session = session
         self.log = logging.getLogger("File")
         self.log.debug(u"[INIT] Loading file {}/{}".format(root, path))
         self.readbuffer = defaultdict(lambda: None)
+        self.dirmtime = dirmtime
 
         # Determine if this is a directory
         parent_dir = "/".join(self.path.split("/")[:-1])
@@ -70,7 +71,7 @@ class File:
                 mtime_string = self.r.headers["Last-Modified"]
                 self.mtime = time.mktime(datetime.strptime(mtime_string, "%a, %d %b %Y %H:%M:%S %Z").timetuple())
             except KeyError:
-                self.mtime = None if self.is_dir else time.time()
+                self.mtime = None if self.is_dir and self.dirmtime else time.time()
             if self.mtime is None:
                 # parse modified time from html if we can't get from header
                 response = self.session.get(u"{}/{}/".format(self.root, parent_dir))
